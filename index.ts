@@ -85,7 +85,9 @@ function build(graph: Asset[]) {
     mapping: asset.mapping,
   }))
   const code = ejs.render(tpl, { data })
-  fs.writeFileSync("./bundle.js", code)
+
+  fs.existsSync('dist') || fs.mkdirSync('dist')
+  fs.writeFileSync("./dist/bundle.js", code)
 }
 const graph = createGraph()
 
