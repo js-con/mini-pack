@@ -1,5 +1,5 @@
 //@ts-ignore
 import { foo } from "./foo.ts"
 
-foo()
+foo('123')
 console.log("main.js")
