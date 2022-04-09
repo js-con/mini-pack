@@ -3,11 +3,12 @@ import * as parser from "@babel/parser"
 import * as traverse from "@babel/traverse"
 import * as path from "path"
 import * as babelCore from "@babel/core"
-import * as ts from 'ts-node'
+import * as ts from "ts-node"
+import * as ejs from "ejs"
 
 interface Asset {
   filePath: string
-  source: string
+  code: string
   deps: string[]
 }
 function createAsset(filePath: string): Asset {
@@ -15,38 +16,39 @@ function createAsset(filePath: string): Asset {
   let source = fs.readFileSync(filePath, { encoding: "utf-8" })
 
   // 2. 转换成JS
-  if(filePath.endsWith('.ts'))
-    source = ts.create({
-      compilerOptions:{
-        module:'es6'
-      }
-    }).compile(source, filePath)
+  if (filePath.endsWith(".ts"))
+    source = ts
+      .create({
+        compilerOptions: {
+          module: "es6",
+        },
+      })
+      .compile(source, filePath)
 
-  console.log('-----source--------\n',source)
+  //console.log('-----source--------\n',source)
 
   // 3. 获取依赖关系
   const ast = parser.parse(source, {
     sourceType: "module",
   })
-  console.log('---------ast----------\n',ast)
+  //console.log("---------ast----------\n", ast)
 
   const deps: string[] = []
   traverse.default(ast, {
     ImportDeclaration({ node }) {
-      console.log('---------------deps',node.source.value)
       deps.push(node.source.value)
     },
   })
 
   // 5. esm转cjs
-/*   const { code } = babelCore.transformFromAstSync(ast, null, {
+  const { code } = babelCore.transformFromAstSync(ast, null, {
     presets: ["env"],
   })
-  console.log('code',code) */
+  //console.log('-----------code-------------',code)
 
   return {
     filePath,
-    source,
+    code,
     deps,
   }
 }
@@ -67,5 +69,15 @@ function createGraph() {
   return queue
 }
 
+function build(graph: Asset[]) {
+  const tpl = fs.readFileSync("./bundle.example.ejs", { encoding: "utf-8" })
+  const data = graph.map((asset) => ({
+    filePath: asset.filePath,
+    code: asset.code,
+  }))
+  const code = ejs.render(tpl, { data })
+  fs.writeFileSync("./bundle.js", code)
+}
 const graph = createGraph()
-console.log('--------------graph----------',graph)
+
+build(graph)
