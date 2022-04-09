@@ -10,7 +10,12 @@ interface Asset {
   filePath: string
   code: string
   deps: string[]
+  id: number
+  mapping: Record<string, number>
 }
+
+//每个文件的id
+let id = 0
 function createAsset(filePath: string): Asset {
   // 1. 获取文件内容
   let source = fs.readFileSync(filePath, { encoding: "utf-8" })
@@ -50,6 +55,8 @@ function createAsset(filePath: string): Asset {
     filePath,
     code,
     deps,
+    mapping: {},
+    id: id++,
   }
 }
 
@@ -62,6 +69,7 @@ function createGraph() {
   for (const asset of queue) {
     asset.deps.forEach((relativePath) => {
       const child = createAsset(path.resolve("./example", relativePath))
+      asset.mapping[relativePath] = child.id
       queue.push(child)
     })
   }
@@ -72,8 +80,9 @@ function createGraph() {
 function build(graph: Asset[]) {
   const tpl = fs.readFileSync("./bundle.example.ejs", { encoding: "utf-8" })
   const data = graph.map((asset) => ({
-    filePath: asset.filePath,
+    id: asset.id,
     code: asset.code,
+    mapping: asset.mapping,
   }))
   const code = ejs.render(tpl, { data })
   fs.writeFileSync("./bundle.js", code)
